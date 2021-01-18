@@ -24,10 +24,11 @@ def simulate_policy(args):
         policy.cuda()
 
     import cv2
-    video = cv2.VideoWriter('diayn_bipedal_walker_hardcore.avi', cv2.VideoWriter_fourcc('M','J','P','G'), 30, (1200, 800))
-    index = 0
+    video = cv2.VideoWriter('diayn_bipedal_walker_hardcore.avi', cv2.VideoWriter_fourcc('M','J','P','G'), 30, (600, 400))
+    # index = 0
     for skill in range(policy.stochastic_policy.skill_dim):
-        for _ in range(3):
+        for trial in range(3):
+            print("skill-{} rollout-{}".format(skill, trial))
             path = rollout(
                 env,
                 policy,
@@ -40,11 +41,11 @@ def simulate_policy(args):
             logger.dump_tabular()
 
             for i, img in enumerate(path['images']):
-                print(i)
-                print(img.shape)
+                # print(i)
+                # print(img.shape)
                 video.write(img[:,:,::-1].astype(np.uint8))
 #                cv2.imwrite("frames/diayn_bipedal_walker_hardcore.avi/%06d.png" % index, img[:,:,::-1])
-                index += 1
+                # index += 1
 
     video.release()
     print("wrote video")
