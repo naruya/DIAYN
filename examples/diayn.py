@@ -15,44 +15,59 @@ from rlkit.torch.networks import FlattenMlp
 from rlkit.torch.sac.diayn.diayn_torch_online_rl_algorithm import DIAYNTorchOnlineRLAlgorithm
 
 
-def get_algorithm(expl_env, eval_env, skill_dim):
+def get_algorithm(expl_env, eval_env, skill_dim, epochs=100, file=None):
     obs_dim = expl_env.observation_space.low.size
     action_dim = eval_env.action_space.low.size
     skill_dim = skill_dim
-
     M = variant['layer_size']
-    qf1 = FlattenMlp(
-        input_size=obs_dim + action_dim + skill_dim,
-        output_size=1,
-        hidden_sizes=[M, M],
-    )
-    qf2 = FlattenMlp(
-        input_size=obs_dim + action_dim + skill_dim,
-        output_size=1,
-        hidden_sizes=[M, M],
-    )
-    target_qf1 = FlattenMlp(
-        input_size=obs_dim + action_dim + skill_dim,
-        output_size=1,
-        hidden_sizes=[M, M],
-    )
-    target_qf2 = FlattenMlp(
-        input_size=obs_dim + action_dim + skill_dim,
-        output_size=1,
-        hidden_sizes=[M, M],
-    )
-    df = FlattenMlp(
-        input_size=obs_dim,
-        output_size=skill_dim,
-        hidden_sizes=[M, M],
-    )
-    policy = SkillTanhGaussianPolicy(
-        obs_dim=obs_dim + skill_dim,
-        action_dim=action_dim,
-        hidden_sizes=[M, M],
-        skill_dim=skill_dim
-    )
-    eval_policy = MakeDeterministic(policy)
+
+    if file:
+        print("old policy")
+        data = torch.load(file)
+        policy = data['evaluation/policy']
+        qf1 = data['trainer/qf1']
+        qf2 = data['trainer/qf2']
+        target_qf1 = data['trainer/target_qf1']
+        target_qf2 = data['trainer/target_qf2']
+        df = data['trainer/df']
+        policy = data['trainer/policy']
+        eval_policy = MakeDeterministic(policy)
+
+    else:
+        print("new policy")
+        qf1 = FlattenMlp(
+            input_size=obs_dim + action_dim + skill_dim,
+            output_size=1,
+            hidden_sizes=[M, M],
+        )
+        qf2 = FlattenMlp(
+            input_size=obs_dim + action_dim + skill_dim,
+            output_size=1,
+            hidden_sizes=[M, M],
+        )
+        target_qf1 = FlattenMlp(
+            input_size=obs_dim + action_dim + skill_dim,
+            output_size=1,
+            hidden_sizes=[M, M],
+        )
+        target_qf2 = FlattenMlp(
+            input_size=obs_dim + action_dim + skill_dim,
+            output_size=1,
+            hidden_sizes=[M, M],
+        )
+        df = FlattenMlp(
+            input_size=obs_dim,
+            output_size=skill_dim,
+            hidden_sizes=[M, M],
+        )
+        policy = SkillTanhGaussianPolicy(
+            obs_dim=obs_dim + skill_dim,
+            action_dim=action_dim,
+            hidden_sizes=[M, M],
+            skill_dim=skill_dim
+        )
+        eval_policy = MakeDeterministic(policy)
+
     eval_path_collector = DIAYNMdpPathCollector(
         eval_env,
         eval_policy,
@@ -76,6 +91,7 @@ def get_algorithm(expl_env, eval_env, skill_dim):
         target_qf2=target_qf2,
         **variant['trainer_kwargs']
     )
+    variant['algorithm_kwargs']['num_epochs'] = epochs
     algorithm = DIAYNTorchOnlineRLAlgorithm(
         trainer=trainer,
         exploration_env=expl_env,
@@ -85,61 +101,7 @@ def get_algorithm(expl_env, eval_env, skill_dim):
         replay_buffer=replay_buffer,
         **variant['algorithm_kwargs']
     )
-    log_dir = setup_logger('DIAYN_' + str(skill_dim) + '_' + str(expl_env.wrapped_env.spec)[8:-1], 
-                 variant=variant)
-    return algorithm, log_dir
-
-
-
-def get_algorithm_resume(expl_env, eval_env, skill_dim, file):
-    data = torch.load(file)
-    policy = data['evaluation/policy']
-
-    obs_dim = expl_env.observation_space.low.size
-    action_dim = eval_env.action_space.low.size
-    skill_dim = skill_dim
-
-    M = variant['layer_size']
-    qf1 = data['trainer/qf1']
-    qf2 = data['trainer/qf2']
-    target_qf1 = data['trainer/target_qf1']
-    target_qf2 = data['trainer/target_qf2']
-    df = data['trainer/df']
-    policy = data['trainer/policy']
-    eval_policy = MakeDeterministic(policy)
-    eval_path_collector = DIAYNMdpPathCollector(
-        eval_env,
-        eval_policy,
-    )
-    expl_step_collector = MdpStepCollector(
-        expl_env,
-        policy,
-    )
-    replay_buffer = DIAYNEnvReplayBuffer(
-        variant['replay_buffer_size'],
-        expl_env,
-        skill_dim,
-    )
-    trainer = DIAYNTrainer(
-        env=eval_env,
-        policy=policy,
-        qf1=qf1,
-        qf2=qf2,
-        df=df,
-        target_qf1=target_qf1,
-        target_qf2=target_qf2,
-        **variant['trainer_kwargs']
-    )
-    algorithm = DIAYNTorchOnlineRLAlgorithm(
-        trainer=trainer,
-        exploration_env=expl_env,
-        evaluation_env=eval_env,
-        exploration_data_collector=expl_step_collector,
-        evaluation_data_collector=eval_path_collector,
-        replay_buffer=replay_buffer,
-        **variant['algorithm_kwargs']
-    )
-    log_dir = setup_logger('DIAYN_' + str(skill_dim) + '_' + str(expl_env.wrapped_env.spec)[8:-1], 
+    log_dir = setup_logger('DIAYN_' + str(skill_dim) + '_' + expl_env.wrapped_env.spec.id, 
                  variant=variant)
     return algorithm, log_dir
 
@@ -156,7 +118,7 @@ variant = dict(
     layer_size=256,
     replay_buffer_size=int(1E6),
     algorithm_kwargs=dict(
-        num_epochs=1,
+        num_epochs=1000,
         num_eval_steps_per_epoch=5000,
         num_trains_per_train_loop=1000,
         num_expl_steps_per_train_loop=1000,
