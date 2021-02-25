@@ -103,7 +103,8 @@ def get_algorithm(expl_env, eval_env, skill_dim, epochs=100, file=None):
     )
     log_dir = setup_logger('DIAYN_' + str(skill_dim) + '_' + expl_env.wrapped_env.spec.id, 
                  variant=variant)
-    return algorithm, log_dir
+    algorithm.log_dir = log_dir
+    return algorithm
 
 
 def experiment(algorithm, expl_env, eval_env, args):
