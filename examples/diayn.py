@@ -151,6 +151,6 @@ if __name__ == "__main__":
     # expl_env = NormalizedBoxEnv(HalfCheetahEnv())
     # eval_env = NormalizedBoxEnv(HalfCheetahEnv())
 
-    algorithm, log_dir = get_algorithm(expl_env, eval_env, args.skill_dim)
+    algorithm = get_algorithm(expl_env, eval_env, args.skill_dim)
     # ptu.set_gpu_mode(True)  # optionally set the GPU (default=False)
     experiment(algorithm, expl_env, eval_env, args)
