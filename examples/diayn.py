@@ -15,7 +15,7 @@ from rlkit.torch.networks import FlattenMlp
 from rlkit.torch.sac.diayn.diayn_torch_online_rl_algorithm import DIAYNTorchOnlineRLAlgorithm
 
 
-def get_algorithm(expl_env, eval_env, skill_dim, epochs=100, file=None):
+def get_algorithm(expl_env, eval_env, skill_dim, epochs, file=None):
     obs_dim = expl_env.observation_space.low.size
     action_dim = eval_env.action_space.low.size
     skill_dim = skill_dim
@@ -145,12 +145,18 @@ if __name__ == "__main__":
                         help='environment')
     parser.add_argument('--skill_dim', type=int, default=10,
                         help='skill dimension')
+    parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument("--file", type=str, default=None)
     args = parser.parse_args()
     expl_env = NormalizedBoxEnv(gym.make(str(args.env)))
     eval_env = NormalizedBoxEnv(gym.make(str(args.env)))
     # expl_env = NormalizedBoxEnv(HalfCheetahEnv())
     # eval_env = NormalizedBoxEnv(HalfCheetahEnv())
 
-    algorithm = get_algorithm(expl_env, eval_env, args.skill_dim)
+    algorithm = get_algorithm(expl_env,
+                              eval_env,
+                              args.skill_dim,
+                              args.epochs,
+                              file=args.file)
     # ptu.set_gpu_mode(True)  # optionally set the GPU (default=False)
     experiment(algorithm, expl_env, eval_env, args)
