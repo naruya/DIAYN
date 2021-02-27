@@ -15,7 +15,7 @@ from rlkit.torch.networks import FlattenMlp
 from rlkit.torch.sac.diayn.diayn_torch_online_rl_algorithm import DIAYNTorchOnlineRLAlgorithm
 
 
-def get_algorithm(expl_env, eval_env, skill_dim, epochs, file=None):
+def get_algorithm(expl_env, eval_env, skill_dim, epochs, length, file=None):
     obs_dim = expl_env.observation_space.low.size
     action_dim = eval_env.action_space.low.size
     skill_dim = skill_dim
@@ -92,6 +92,7 @@ def get_algorithm(expl_env, eval_env, skill_dim, epochs, file=None):
         **variant['trainer_kwargs']
     )
     variant['algorithm_kwargs']['num_epochs'] = epochs
+    variant['algorithm_kwargs']['max_path_length'] = length
     algorithm = DIAYNTorchOnlineRLAlgorithm(
         trainer=trainer,
         exploration_env=expl_env,
@@ -107,7 +108,7 @@ def get_algorithm(expl_env, eval_env, skill_dim, epochs, file=None):
     return algorithm
 
 
-def experiment(algorithm, expl_env, eval_env, args):
+def experiment(algorithm):
     algorithm.to(ptu.device)
     algorithm.train()
 
@@ -146,6 +147,7 @@ if __name__ == "__main__":
     parser.add_argument('--skill_dim', type=int, default=10,
                         help='skill dimension')
     parser.add_argument('--epochs', type=int, default=100)
+    parser.add_argument('--H_diayn', type=int, default=50)
     parser.add_argument("--file", type=str, default=None)
     args = parser.parse_args()
     expl_env = NormalizedBoxEnv(gym.make(str(args.env)))
@@ -157,6 +159,7 @@ if __name__ == "__main__":
                               eval_env,
                               args.skill_dim,
                               args.epochs,
+                              args.H_diayn,
                               file=args.file)
     # ptu.set_gpu_mode(True)  # optionally set the GPU (default=False)
-    experiment(algorithm, expl_env, eval_env, args)
+    experiment(algorithm)
